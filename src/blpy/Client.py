@@ -29,18 +29,18 @@ class incomming_blacklist(Resource):
         self.update_period = timedelta(update_days)
         self.last_update = None
         self.blocklist = None
-
+        self.compressed = None
         self.d = None
 
     def _get_blocklist_callback(self, value):
-        self
-        self.blocklist = frgz(value)
+        self.compressed = value
+        self.blocklist = frgz(self.compressed)
         self.blocklist = Comment_re.sub('', self.blocklist)
         self.blocklist = Emptyline_re.sub('\n', self.blocklist)
 
         self.last_update = datetime.now()
 
-        return value, self.blocklist
+        return self.compressed, self.blocklist
 
     def _render_callback(self, value, request):
         request.setHeader('Content-Encoding', 'gzip')
@@ -54,13 +54,14 @@ class incomming_blacklist(Resource):
     def get_blocklist(self):
         if (not self.last_update or
             not self.blocklist or
+            not self.compressed or
             self.last_update + self.update_period < datetime.now()):
 
             page = getPage(self.url)
             page.addCallback(self._get_blocklist_callback)
             return page
         else:
-            return defer.succeed(self.blocklist)
+            return defer.succeed((self.compressed, self.blocklist))
 
     def render(self, request):
         self.get_blocklist().addCallback(self._render_callback, request)
